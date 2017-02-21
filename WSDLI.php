@@ -27,7 +27,11 @@
 require_once 'WSDLInterpreter.class.php';
 
 $wsdlInterpreter = null;
-if (!empty($argv[2])) {
+//-- TODO: convert to boolean and set filename to "{_namespace}.classes.php"
+if (isset($argv[3])) {
+    $wsdlInterpreter = new WSDLInterpreter($argv[1], $argv[2], $argv[3]);
+}
+else if (!empty($argv[2])) {
     $wsdlInterpreter = new WSDLInterpreter($argv[1], $argv[2]);
 }
 else {

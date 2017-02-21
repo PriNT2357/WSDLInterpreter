@@ -64,6 +64,13 @@ class WSDLInterpreter
      * @access private
      */
     private $_namespace;
+    
+    /**
+     * Name of file to store output. Leaving empty for individual files.
+     * @var string
+     * @access private
+     */
+    private $_classfile;
 
     /**
      * A SoapClient for loading the WSDL
@@ -104,16 +111,22 @@ class WSDLInterpreter
      * Parses the target wsdl and loads the interpretation into object members
      * 
      * @param string $wsdl  the URI of the wsdl to interpret
+     * @param string $namespace  the namespace to use 
+     * @param string $classFile  the name of the file to output classes to. 
+     *                              Leave empty to put classes into separate files.
      * @throws WSDLInterpreterException Container for all WSDL interpretation problems
      * @todo Create plug in model to handle extendability of WSDL files
      */
-    public function __construct($wsdl, $namespace = "WSDLI") 
+    public function __construct($wsdl, $namespace = "WSDLI", $classFile = null) 
     {
         try {
             $this->_wsdl = $wsdl;
             $this->_client = new SoapClient($this->_wsdl);
             
             $this->_namespace = $namespace;
+            if (!empty($classFile)) {
+                $this->_classfile = $classFile;
+            }
             
             $this->_dom = new DOMDocument();
             $this->_dom->load($this->_wsdl, LIBXML_DTDLOAD|LIBXML_DTDATTR|LIBXML_NOENT|LIBXML_XINCLUDE);
@@ -354,7 +367,7 @@ class WSDLInterpreter
     private function _generateClassPHP($class) 
     {
         $return = "";
-        if (!empty($this->_namespace)) {
+        if (!empty($this->_namespace) && empty($this->_classfile)) {
             $return .= 'namespace '.$this->_namespace.';'."\n\n";
         }
         $return .= '/**'."\n";
@@ -660,10 +673,29 @@ class WSDLInterpreter
             mkdir($outputDirectory."/classes/");
         }
         
+        $filename = $outputDirectory."/classes/";
+        //-- If putting code into one file
+        if (!empty($this->_classfile)) {
+            $filename .= $this->_classfile.".php";
+            file_put_contents($filename, ""); //-- clean file for each run
+            file_put_contents($filename, "<?php\n\n", FILE_APPEND);
+            if (!empty($this->_namespace)) {
+            file_put_contents($filename, "namespace ".$this->_namespace.";\n", FILE_APPEND);
+            }
+            
+        }
+        
         foreach($this->_classPHPSources as $className => $classCode) {
-            $filename = $outputDirectory."/classes/".$className.".class.php";
-            if (file_put_contents($filename, "<?php\n\n".$classCode)) {
-                $outputFiles[] = $filename;
+            if (!empty($this->_classfile)) {
+                if (file_put_contents($filename, "\n\n".$classCode, FILE_APPEND)) {
+                    $outputFiles[] = $filename;
+                }
+            }
+            else {
+                $filename = $outputDirectory."/classes/".$className.".class.php";
+                if (file_put_contents($filename, "<?php\n\n".$classCode)) {
+                    $outputFiles[] = $filename;
+                }
             }
         }
         
