@@ -208,6 +208,7 @@ class WSDLInterpreter
      * 
      * @access private
      */
+    //-- TODO: Account for attribute name being a reserved PHP word (DEFAULT, AS, ...)
     private function _validateNamingConvention($name) 
     {
         return preg_replace('#[^a-zA-Z0-9_\x7f-\xff]*#', '',
@@ -397,6 +398,7 @@ class WSDLInterpreter
 				case "":
 					break;
 				
+				//-- TODO: Account for attribute name being a reserved PHP word  (DEFAULT, AS, ...)
 				case "senumeration":
 					$valName = $property->getAttribute("validatedName");
 					$return .= "\tconst ".$valName." = '".$valName."';\n";
