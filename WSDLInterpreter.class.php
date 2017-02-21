@@ -57,6 +57,13 @@ class WSDLInterpreter
      * @access private
      */
     private $_wsdl = null;
+    
+    /**
+     * Namespace for the output.
+     * @var string
+     * @access private
+     */
+    private $_namespace;
 
     /**
      * A SoapClient for loading the WSDL
@@ -100,11 +107,13 @@ class WSDLInterpreter
      * @throws WSDLInterpreterException Container for all WSDL interpretation problems
      * @todo Create plug in model to handle extendability of WSDL files
      */
-    public function __construct($wsdl) 
+    public function __construct($wsdl, $namespace = "WSDLI") 
     {
         try {
             $this->_wsdl = $wsdl;
             $this->_client = new SoapClient($this->_wsdl);
+            
+            $this->_namespace = $namespace;
             
             $this->_dom = new DOMDocument();
             $this->_dom->load($this->_wsdl, LIBXML_DTDLOAD|LIBXML_DTDATTR|LIBXML_NOENT|LIBXML_XINCLUDE);
@@ -344,7 +353,10 @@ class WSDLInterpreter
      */
     private function _generateClassPHP($class) 
     {
-        $return = 'namespace WSDLI;'."\n\n";
+        $return = "";
+        if (!empty($this->_namespace)) {
+            $return .= 'namespace '.$this->_namespace.';'."\n\n";
+        }
         $return .= '/**'."\n";
         $return .= ' * '.$class->getAttribute("validatedName")."\n";
         $return .= ' */'."\n";
@@ -468,7 +480,10 @@ class WSDLInterpreter
      */
     private function _generateServicePHP($service) 
     {
-        $return = 'namespace WSDLI;'."\n\n";
+        $return = "";
+        if (!empty($this->_namespace)) {
+            $return .= 'namespace '.$this->_namespace.';'."\n\n";
+        }
         $return .= '/**'."\n";
         $return .= ' * '.$service->getAttribute("validatedName")."\n";
         $return .= ' * @author WSDLInterpreter'."\n";

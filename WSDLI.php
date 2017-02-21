@@ -26,7 +26,14 @@
  
 require_once 'WSDLInterpreter.class.php';
 
-$wsdlInterpreter = new WSDLInterpreter($argv[1]);
+$wsdlInterpreter = null;
+if (!empty($argv[2])) {
+    $wsdlInterpreter = new WSDLInterpreter($argv[1], $argv[2]);
+}
+else {
+    $wsdlInterpreter = new WSDLInterpreter($argv[1]);
+}
+
 
 try {
     $results = $wsdlInterpreter->savePHP(dirname( __FILE__ ).'/output/');
