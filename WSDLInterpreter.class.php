@@ -114,13 +114,17 @@ class WSDLInterpreter
             /**
              * wsdl:import
              */
+			file_put_contents("/tmp/timwsdl", "--- Entries //*[local-name()='import' and namespace-uri()='http://schemas.xmlsoap.org/wsdl/'] ---".PHP_EOL, FILE_APPEND);
             $query = "//*[local-name()='import' and namespace-uri()='http://schemas.xmlsoap.org/wsdl/']";
             $entries = $xpath->query($query);
             foreach ($entries as $entry) {
+				file_put_contents("/tmp/timwsdl", print_r($entry, true), FILE_APPEND);
                 $parent = $entry->parentNode;
                 $wsdl = new DOMDocument();
                 $wsdl->load($entry->getAttribute("location"), LIBXML_DTDLOAD|LIBXML_DTDATTR|LIBXML_NOENT|LIBXML_XINCLUDE);
+				file_put_contents("/tmp/timwsdl", "--- Child nodes ---".PHP_EOL, FILE_APPEND);
                 foreach ($wsdl->documentElement->childNodes as $node) {
+					file_put_contents("/tmp/timwsdl", print_r($node, true), FILE_APPEND);
                     $newNode = $this->_dom->importNode($node, true);
                     $parent->insertBefore($newNode, $entry);
                 }
@@ -130,16 +134,20 @@ class WSDLInterpreter
             /**
              * xsd:import
              */
+			file_put_contents("/tmp/timwsdl", "--- Entries //*[local-name()='import' and namespace-uri()='http://www.w3.org/2001/XMLSchema'] ---".PHP_EOL, FILE_APPEND);
             $query = "//*[local-name()='import' and namespace-uri()='http://www.w3.org/2001/XMLSchema']";
             $entries = $xpath->query($query);
             foreach ($entries as $entry) {
+				file_put_contents("/tmp/timwsdl", print_r($entry, true), FILE_APPEND);
                 $parent = $entry->parentNode;
                 $xsd = new DOMDocument();
                 $result = @$xsd->load(dirname($this->_wsdl) . "/" . $entry->getAttribute("schemaLocation"), 
                     LIBXML_DTDLOAD|LIBXML_DTDATTR|LIBXML_NOENT|LIBXML_XINCLUDE);
                 if ($result) {
+					file_put_contents("/tmp/timwsdl", "--- Child nodes ---".PHP_EOL, FILE_APPEND);
                     foreach ($xsd->documentElement->childNodes as $node) {
-                        $newNode = $this->_dom->importNode($node, true);
+						$newNode = $this->_dom->importNode($node, true);
+                        file_put_contents("/tmp/timwsdl", print_r($newNode, true), FILE_APPEND);
                         $parent->insertBefore($newNode, $entry);
                     }
                     $parent->removeChild($entry);
@@ -163,8 +171,9 @@ class WSDLInterpreter
         } catch (Exception $e) {
             throw new WSDLInterpreterException("Error interpreting WSDL document (".$e->getMessage().")");
         }
-       
+		file_put_contents("/tmp/timwsdl", "--- Load Classes ---".PHP_EOL, FILE_APPEND);
         $this->_loadClasses();
+		file_put_contents("/tmp/timwsdl", "--- Load Services ---".PHP_EOL, FILE_APPEND);
         $this->_loadServices();
     }
 
@@ -263,8 +272,12 @@ class WSDLInterpreter
      */
     private function _loadClasses() 
     {
+		
         $classes = $this->_dom->getElementsByTagName("class");
+		file_put_contents("/tmp/timwsdl", PHP_EOL."--- Classes: ".PHP_EOL, FILE_APPEND);
         foreach ($classes as $class) {
+			file_put_contents("/tmp/timwsdl", "--- Class: ".$class->getAttribute("name").PHP_EOL, FILE_APPEND);
+//			file_put_contents("/tmp/timwsdl", print_r($class, true).PHP_EOL, FILE_APPEND);
             $class->setAttribute("validatedName", 
                 $this->_validateClassName($class->getAttribute("name")));
             $extends = $class->getElementsByTagName("extends");
@@ -275,12 +288,20 @@ class WSDLInterpreter
             } else {
                 $classExtension = false;
             }
+			file_put_contents("/tmp/timwsdl", "--- {$class->getAttribute("name")} Properties: ".PHP_EOL, FILE_APPEND);
             $properties = $class->getElementsByTagName("entry");
             foreach ($properties as $property) {
+				$t = $property->getAttribute("type");
+				file_put_contents("/tmp/timwsdl", $property->getAttribute("name")."=>".$t.PHP_EOL, FILE_APPEND);
+//				file_put_contents("/tmp/timwsdl", print_r($property, true).PHP_EOL, FILE_APPEND);
+				
+//				foreach ($property->getAttribute("value") as $tmpval) {
+//					file_put_contents("/tmp/timwsdl", print_r($property, true).PHP_EOL, FILE_APPEND);
+//				}
                 $property->setAttribute("validatedName", 
                     $this->_validateNamingConvention($property->getAttribute("name")));
                 $property->setAttribute("type", 
-                    $this->_validateType($property->getAttribute("type")));
+                    $this->_validateType($t));
             }
             
             $sources[$class->getAttribute("validatedName")] = array(
@@ -333,14 +354,37 @@ class WSDLInterpreter
             $return .= " extends ".$extends->item(0)->nodeValue;
         }
         $return .= " {\n";
-    
-        $properties = $class->getElementsByTagName("entry");
+        $properties = $class->getElementsByTagName("*");
         foreach ($properties as $property) {
-            $return .= "\t/**\n"
-                     . "\t * @access public\n"
-                     . "\t * @var ".$property->getAttribute("type")."\n"
-                     . "\t */\n"
-                     . "\t".'public $'.$property->getAttribute("validatedName").";\n";
+//			foreach($property->attributes as $attr) {
+//					$return.=var_dump($attr);
+//					foreach ($attr->childNodes as $cn) {
+//					$return.=var_dump($cn);
+//					}
+//				if ($attr->value == "nsWeightUnits") {
+//					$return.="found\n";
+//					$return.=var_dump($attr->childNodes);
+//				}
+//			}
+		
+			$propType = $property->getAttribute("type");
+			switch ($propType) {
+				case "":
+					break;
+				
+				case "senumeration":
+					$valName = $property->getAttribute("validatedName");
+					$return .= "\tconst ".$valName." = '".$valName."';\n";
+					break;
+
+				default:
+					$return .= "\t/**\n"
+							. "\t * @access public\n"
+							. "\t * @var ".$property->getAttribute("type")."\n"
+							. "\t */\n"
+							. "\t".'public $'.$property->getAttribute("validatedName").";\n";
+					break;
+			}
         }
     
         $extraParams = false;

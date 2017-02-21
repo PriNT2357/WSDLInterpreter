@@ -89,6 +89,11 @@
                             <xsl:apply-templates select=".//*[local-name()='element']" />
                         </properties>
                     </xsl:if>
+                    <xsl:if test=".//*[local-name()='enumeration']">
+                        <properties>
+                            <xsl:apply-templates select=".//*[local-name()='enumeration']" />
+                        </properties>
+                    </xsl:if>
                 </class>
             </xsl:for-each>
         </classes>
@@ -161,12 +166,23 @@
     </xsl:choose>
 </xsl:template>
 
+<xsl:template match="*[local-name()='enumeration' and namespace-uri()='http://www.w3.org/2001/XMLSchema']">
+    
+            <xsl:call-template name="messagePart">
+                <xsl:with-param name="refnode" select="current()" />
+                <xsl:with-param name="type" select="local-name()" />
+                <xsl:with-param name="value" select="@value" />
+            </xsl:call-template>
+    
+</xsl:template>
+
 <xsl:template name="messagePart">
     <xsl:param name="refnode" />
     <xsl:param name="name" />
     <xsl:param name="type" />
+    <xsl:param name="value" />
     <xsl:choose>
-        <xsl:when test="string-length($type)=0">
+        <xsl:when test="string-length($type)=0 and local-name()!='enumeration'">
             <xsl:choose>
                 <xsl:when test="$refnode[@maxOccurs='unbounded']">
                     <entry debug="1" name="{$name}" type="anyType[]" error="no type or element in message" />
@@ -285,6 +301,24 @@
                     </xsl:choose>                
                 </xsl:otherwise>
             </xsl:choose>                        
+        </xsl:when>
+        <xsl:when test="local-name()='enumeration'">
+			<xsl:variable name="typeref" select="//*[local-name()='schema' and 
+                        namespace-uri()='http://www.w3.org/2001/XMLSchema']
+                        /*[local-name()='enumeration' and namespace-uri()='http://www.w3.org/2001/XMLSchema' 
+                        and (@name=substring-after($type,':') or @name=$type)]/@name" />
+<!--            <xsl:choose>
+                <xsl:when test="contains($typeref,':')">
+                            <entry debug="5" name="{$name}" type="{substring-after($typeref,':')}" value="{$value}" />
+							<entry debug="5c" name="{$value}" type="{substring-after($typeref,':')}" value="{$value}"/>
+                </xsl:when>
+                <xsl:otherwise>
+					<entry debug="5c" name="{$value}" type="s:enumeration" value="{$value}"/>
+                </xsl:otherwise>
+            </xsl:choose> -->
+			
+			<entry debug="5c" name="{$value}" type="s:enumeration" value="{$value}"/>
+			
         </xsl:when>
         <xsl:otherwise>
             <xsl:choose>
